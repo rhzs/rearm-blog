@@ -1,0 +1,46 @@
+---
+title: Creating HTTP Proxy Rust
+description: Redis is high performance cache server. This tutorial will guide you how to create HTTP Proxy with Redis and Rust.
+og: https://res.cloudinary.com/rauchg/image/upload/v1624456141/blog/og/making-the-web_kuwgmz.png
+date: June 23, 2021
+---
+
+
+1. [**Project Limitations**](#project-limitations)
+2. [**Setup Your Environment**](#setup-your-environment)
+3. [**Choosing Rust HTTP Server**](#choosing-rust-http-server)
+4. [**Create New Rust Project**](#getting-started)
+
+
+<h2 id="project-limitations">1. Project Limitations</h2>
+Today I feel like to write tutorial creating simple HTTP Proxy using Rust. It is part of my learning process to understand Rust in depth. 
+This tutorial will be consist of several parts to make the reader easier to read. The following will be the outcome of our mini HTTP Proxy. 
+
+1. Ability to route request from backend service.
+2. Ability to route request from configuration file.
+3. Ability to limit incoming request.
+
+
+<h2 id="setup-your-environment">2. Setup Your Environment</h2>
+As of this writing, I use the latest stable Rust version 1.54. You can use higher version but keep in mind that it will be untested. You might expect bugs or potential adjustments that need to be made. 
+
+<h2 id="choosing-rust-http-server">3. Choosing Rust HTTTP Server</h2>
+
+There are couple alternatives that you use to implement the HTTP Server. For beginners, I would not recommend to use default Rust HTTP Server since you need to glue everything together, starting from listening to the TCP connection, and handling the routes. 
+
+Here are some Rust Web Framework that you can use today:
+
+1. Warp
+2. Hyper
+3. Actix
+4. Ntex
+
+Which one is the best choice? Well, it depends how you want to look at it. If your concern is about performance, and you are talking blindly the Techempower benchmark,
+You may think that it will Ntex. Wise people will say otherwise. After all, the rest of your implementation will decide how much performant system that you can create.
+If you are interested in reading some comparison on the above Web Frameworks, you may want to see my article on the comparison between those Rust Web frameworks. 
+
+
+<h2 id="getting-started">4. Create New Rust Project</h2>
+
+Cont'd
+

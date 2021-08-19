@@ -1,0 +1,14 @@
+{
+  "posts": [
+    {
+      "id": "rust-http-proxy",
+      "date": "June 23, 2021",
+      "title": "Making the Web Proxy with Rust"
+    },
+    {
+      "id": "firecracker-and-kata-container",
+      "date": "August 8, 2020",
+      "title": "Setting Up Firecracker and Kata Container in GCE"
+    }
+  ]
+}

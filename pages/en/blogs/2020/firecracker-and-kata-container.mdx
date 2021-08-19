@@ -1,0 +1,151 @@
+---
+title: Setting Up Firecracker in Google Compute Engine
+description: High performance virtualization setup with Firecracker in Google Compute Engine
+og: https://res.cloudinary.com/rauchg/image/upload/v1624456141/blog/og/making-the-web_kuwgmz.png
+date: August 8, 2020
+---
+
+import HR from "../../../../components/post/hr";
+import Figure, { Image } from "../../../../components/post/figure";
+
+This is the first Rearm blog that I did. I hope I can satisfy the reader who read this. It's been great pleasure working with Google Kubernetes Engine for the past year. 
+I know that it is going to be upside and down. Few days ago I have discovered something interesting that I want to share with you. It is about Micro VM.
+A Micro VM has been around for years. Under the promise of light weight and faster start up than the original VM. It tempted me to try out the Micro VM. 
+
+Before we begin, we need to have the following:
+1. GCP Account
+2. Docker
+
+
+## Creating a VM with Nested KVM Ability
+Our end goal is to create a Micro VM. To achieve this, we can create VM in our GCP. 
+In GCP, you can create a Virtual Machine (VM) with selected OS, CPU, Memory, and disk.
+We need a special config in order our VM can create another VM inside. We call it a Nested VM, because it has a VM inside a VM.
+Before VM creation, we need GCP CLI to enable the Nested VM by enabling the VMX functionality. 
+
+```s
+$ gcloud compute images create ub18-nested-kvm --source-disk disk-ub18 --licenses "https://www.googleapis.com/compute/v1/projects/vm-options/global/licenses/enable-vmx" --source-disk-zone asia-southeast1-a
+```
+
+Now, create the instance:
+
+```s
+$ gcloud compute instances create kata-firecracker-vm --zone us-east1-b --image ub18-nested-kvm
+```
+
+To check, you can go to terminal via SSH. 
+
+```s
+$ gcloud beta compute ssh kata-firecracker-v
+```
+
+A key-pair will be made and uploaded to VM that you created. In terminal, you will see `ubuntu@kata-firecracker-vm:~$`
+To see if VMX is available for your VM, you can do:
+
+```s
+$ grep -cw vmx /proc/cpuinfo
+1
+```
+
+<b>Congratulations!</b>
+
+You have successfully created VM with VMX available in Google Compute Engine. 
+
+## Enable KVM in GCE
+
+Still on the terminal, you need to download `qemu-kvm` to enable the KVM. 
+
+```s
+$ sudo apt-get update && sudo apt-get install qemu-kvm -y
+$ sudo setfacl -m u:${USER}:rw /dev/kvm
+$ [ -r /dev/kvm ] && [ -w /dev/kvm ] && echo "OK" || echo "FAIL"
+OK
+```
+
+## Firecracker Installation and Configuration
+
+To get started, Firecracker binary is needed to be in the VM server. 
+
+```s
+# Download Firecracker
+$ curl -fsSL -o ./firecracker https://github.com/firecracker-microvm/firecracker/releases/download/v0.21.1/firecracker-v0.21.1-x86_64
+# Change the permission to become executable
+$ chmod +x ./firecracker
+# Download hello-vmlinux.bin to test Firecracker
+$ curl -fsSL -o ./hello-vmlinux.bin https://s3.amazonaws.com/spec.ccfc.min/img/hello/kernel/hello-vmlinux.bin
+# Download hello-rootfs.ext4 to test Firecracker
+$ curl -fsSL -o ./hello-rootfs.ext4 https://s3.amazonaws.com/spec.ccfc.min/img/hello/fsfiles/hello-rootfs.ext4
+```
+
+See Firecracker docs for further info https://github.com/firecracker-microvm/firecracker/blob/master/docs/getting-started.md
+
+Try to execute Firecracker binary file
+
+```s
+$ rm -f /tmp/firecracker.sock && ./firecracker --api-sock /tmp/firecracker.sock
+```
+
+> You should see nothing after running above command
+
+Now, open new terminal and keep current terminal opened. In new terminal, boot Firecracker from `hello-vmlinux.bin` that we downloaded before. 
+
+```s
+$ curl --unix-socket /tmp/firecracker.sock -i \
+  -X PUT 'http://localhost/boot-source' -H 'Accept: application/json' -H 'Content-Type: application/json' \
+  -d '{"kernel_image_path":"./hello-vmlinux.bin","boot_args":"console=ttyS0 reboot=k panic=1 pci=off"}'
+HTTP/1.1 204
+Server: Firecracker API
+Connection: keep-alive
+```
+
+Create Firecracker rootfs from `hello-rootfs.ext4` 
+
+```s
+$ curl --unix-socket /tmp/firecracker.sock -i \
+  -X PUT 'http://localhost/drives/rootfs' -H 'Accept: application/json' -H 'Content-Type: application/json' \
+  -d '{"drive_id":"rootfs","path_on_host":"./hello-rootfs.ext4","is_root_device":true,"is_read_only":false}'
+HTTP/1.1 204
+Server: Firecracker API
+Connection: keep-alive
+```
+
+Start Firecracker instance
+
+```s
+$ curl --unix-socket /tmp/firecracker.sock -i \
+  -X PUT 'http://localhost/actions' -H  'Accept: application/json' -H  'Content-Type: application/json' \
+  -d '{"action_type":"InstanceStart"}'
+HTTP/1.1 204
+Server: Firecracker API
+Connection: keep-alive
+```
+
+Go back to the first terminal, you will see login prompt. Enter `root` as username and `root` as password. 
+
+And Viola!
+
+```s
+Welcome to Alpine Linux 3.10
+Kernel 4.4 on an x86_64 (ttyS0)
+
+localhost login: root
+Password:
+Welcome to Alpine!
+
+The Alpine Wiki contains a large amount of how-to guides and general
+information about administrating Alpine systems.
+See <http://wiki.alpinelinux.org>.
+
+You can setup the system with the command: setup-alpine
+
+You may change this message by editing /etc/motd.
+
+login[858]: root login on 'ttyS0'
+localhost:~#
+```
+
+---
+
+In the next article, we will continue integrating Firecracker and Kata Container. 
+
+<i>Stay tuned!</i>
